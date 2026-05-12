@@ -1,0 +1,78 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using TransportProject.Models;
+using TransportProject.Repositories.Interface;
+
+namespace TransportProject.Controllers
+{
+    [Authorize]
+    public class PatientController : Controller
+    {
+        private readonly IPatientRepository _reposiory;
+
+        public PatientController(IPatientRepository reposiory)
+        {
+            _reposiory = reposiory;
+        }
+
+        public async Task<IActionResult> Index(string search)
+        {
+            try
+            {
+                var patients = await _reposiory.GetAllAsync();
+
+                if (!string.IsNullOrEmpty(search))
+                {
+                    patients = patients.Where(x =>
+                        x.FirstName.Contains(search) ||
+                        x.LastName.Contains(search) ||
+                        x.PhoneNumber.Contains(search));
+                }
+
+                return View(patients);
+            }
+            catch
+            {
+                return View(new List<Patient>());
+            }
+        }
+
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Create(Patient patient)
+        {
+            try
+            {
+                await _reposiory.CreateAsync(patient);
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return View(patient);
+            }
+        }
+
+        public async Task<IActionResult> Edit(int id)
+        {
+            var patient = await _reposiory.GetByIdAsync(id);
+            return View(patient);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Edit(Patient patient)
+        {
+            await _reposiory.UpdateAsync(patient);
+            return RedirectToAction(nameof(Index));
+        }
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            await _reposiory.DeleteAsync(id);
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}

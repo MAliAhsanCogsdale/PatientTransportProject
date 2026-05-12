@@ -1,0 +1,86 @@
+@using TransportProject.ViewModels
+@model RouteAppointmentListVM
+
+@{
+    ViewData["Title"] = "Route Appointments";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Route Appointments</h2>
+    <a class="btn btn-primary" asp-controller="RouteAppointment" asp-action="ImportFile">Import File</a>
+</div>
+
+<!-- ================= FILTER ================= -->
+<form method="get" class="row mb-3">
+
+    <div class="col-md-2">
+        <input type="text" name="searchDriver" value="@Model.SearchDriver" class="form-control" placeholder="Driver" />
+    </div>
+
+    <div class="col-md-2">
+        <input type="text" name="searchPatient" value="@Model.SearchPatient" class="form-control" placeholder="Patient" />
+    </div>
+
+    <div class="col-md-2">
+        <input type="date" name="date" value="@Model.Date?.ToString("yyyy-MM-dd")" class="form-control" />
+    </div>
+
+    <div class="col-md-2 form-check mt-2">
+        <input type="checkbox" name="selectAll" value="true" @(Model.SelectAll ? "checked" : "") />
+        <label>Select All</label>
+    </div>
+
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+
+</form>
+
+<!-- ================= TABLE ================= -->
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Id</th>
+            <th>Driver</th>
+            <th>Patient</th>
+            <th>Pickup Time</th>
+            <th>Pickup Address</th>
+            <th>Hospital</th>
+            <th>Sequence</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.DriverName</td>
+                <td>@item.PatientName</td>
+                <td>@item.PickupTime.ToString("g")</td>
+                <td>@item.PickupAddress</td>
+                <td>@item.HospitalName</td>
+                <td>@item.SequenceOrder</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- ================= PAGINATION ================= -->
+@if (!Model.SelectAll)
+{
+    <nav>
+        <ul class="pagination">
+
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                    <a class="page-link"
+                           href="?page=@i&pageSize=@Model.PageSize&searchDriver=@Model.SearchDriver&searchPatient=@Model.SearchPatient">
+                        @i
+                    </a>
+                </li>
+            }
+
+        </ul>
+    </nav>
+}

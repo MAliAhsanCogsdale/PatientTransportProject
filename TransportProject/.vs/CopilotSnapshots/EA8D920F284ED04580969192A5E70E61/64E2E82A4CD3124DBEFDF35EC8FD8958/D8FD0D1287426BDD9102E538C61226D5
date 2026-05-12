@@ -1,0 +1,30 @@
+﻿@{
+    ViewData["Title"] = "Login";
+}
+
+<h2>Login</h2>
+
+@if (ViewBag.Error != null)
+{
+    <div style="color:red">@ViewBag.Error</div>
+}
+
+<form asp-action="Login" method="post">
+
+    <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" class="form-control" required />
+    </div>
+
+    <br />
+
+    <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" class="form-control" required />
+    </div>
+
+    <br />
+
+    <button type="submit" class="btn btn-primary">Login</button>
+
+</form>

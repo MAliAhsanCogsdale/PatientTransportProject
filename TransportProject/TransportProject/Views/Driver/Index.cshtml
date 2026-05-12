@@ -1,0 +1,79 @@
+@model IEnumerable<TransportProject.Models.Driver>
+
+@{
+    ViewData["Title"] = "Drivers";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Drivers</h2>
+    <a class="btn btn-primary" asp-action="Create">Add Driver</a>
+</div>
+
+<table class="table table-striped table-bordered">
+    <thead class="table-dark">
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Vehicle Id</th>
+            <th>Shift</th>
+            <th>Status</th>
+            <th>Available</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var driver in Model)
+            {
+                <tr>
+                    <td>@driver.Id</td>
+
+                    <td>@driver.FirstName @driver.LastName</td>
+
+                    <td>@driver.Phone</td>
+
+                    <td>@driver.VehicleId</td>
+
+                    <td>
+                        @driver.ShiftStartTime.ToString(@"hh\:mm")
+                        -
+                        @driver.ShiftEndTime.ToString(@"hh\:mm")
+                    </td>
+
+                    <td>
+                        <span class="badge bg-success">@driver.Status</span>
+                    </td>
+
+                    <td>
+                        @(driver.IsAvailable ? "Yes" : "No")
+                    </td>
+
+                    <td>
+                        <a class="btn btn-sm btn-secondary"
+                           asp-action="Edit"
+                           asp-route-id="@driver.Id">
+                           Edit
+                        </a>
+
+                        <a class="btn btn-sm btn-danger"
+                           asp-action="Delete"
+                           asp-route-id="@driver.Id">
+                           Delete
+                        </a>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="8" class="text-center">
+                    No drivers found
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
