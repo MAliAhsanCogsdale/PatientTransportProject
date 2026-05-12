@@ -19,89 +19,89 @@ build_property.TargetFrameworkIdentifier = .NETCoreApp
 build_property.TargetFrameworkVersion = v10.0
 build_property.RootNamespace = TransportProject
 build_property.RootNamespace = TransportProject
-build_property.ProjectDir = D:\Haris\Transport Project\TransportProject\TransportProject\
+build_property.ProjectDir = C:\Personal\Projects\Transport Project\Transport Project\TransportProject\TransportProject\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = D:\Haris\Transport Project\TransportProject\TransportProject
+build_property.MSBuildProjectDirectory = C:\Personal\Projects\Transport Project\Transport Project\TransportProject\TransportProject
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 10.0
 build_property.EnableCodeStyleSeverity = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Pages/Error.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Pages/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXJyb3IuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Pages/Index1.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Pages/Index1.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW5kZXgxLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Pages/Privacy.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Pages/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUHJpdmFjeS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Pages/Shared/_ValidationScriptsPartial.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Pages/Shared/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Pages/_ViewImports.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Pages/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Pages/_ViewStart.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Pages/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Auth/Login.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Auth/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXV0aFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Auth/Register.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Auth/Register.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXV0aFxSZWdpc3Rlci5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Dashboard/Dashboard.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Dashboard/Dashboard.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRGFzaGJvYXJkXERhc2hib2FyZC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Driver/Create.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Driver/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRHJpdmVyXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Driver/Delete.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Driver/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRHJpdmVyXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Driver/Edit.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Driver/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRHJpdmVyXEVkaXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Driver/Index.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Driver/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRHJpdmVyXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/RouteAppointment/Edit.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/RouteAppointment/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUm91dGVBcHBvaW50bWVudFxFZGl0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/RouteAppointment/ImportFile.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/RouteAppointment/ImportFile.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUm91dGVBcHBvaW50bWVudFxJbXBvcnRGaWxlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/RouteAppointment/Index.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/RouteAppointment/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUm91dGVBcHBvaW50bWVudFxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/Shared/_Layout.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/Shared/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/_ViewImports.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/Haris/Transport Project/TransportProject/TransportProject/Views/_ViewStart.cshtml]
+[C:/Personal/Projects/Transport Project/Transport Project/TransportProject/TransportProject/Views/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
