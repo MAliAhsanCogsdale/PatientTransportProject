@@ -1,0 +1,92 @@
+﻿@model TransportProject.Models.Driver
+
+@{
+    ViewData["Title"] = "Driver Details";
+}
+
+<h2>Driver Details</h2>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Full Name</label>
+                <h5>@Model.FirstName @Model.LastName</h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Phone</label>
+                <h5>@Model.Phone</h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Vehicle ID</label>
+                <h5>@Model.VehicleId</h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Status</label>
+                <h5>
+                    <span class="badge bg-success">@Model.Status</span>
+                </h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Shift Time</label>
+                <h5>
+                    @Model.ShiftStartTime.ToString(@"hh\:mm")
+                    -
+                    @Model.ShiftEndTime.ToString(@"hh\:mm")
+                </h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Availability</label>
+                <h5>
+                    @(Model.IsAvailable ? "Available" : "Not Available")
+                </h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Active</label>
+                <h5>
+                    @(Model.IsActive ? "Active" : "Inactive")
+                </h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Address</label>
+                <h5>
+                    @Model.Address1 @Model.Address2
+                </h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Last Drop Time</label>
+                <h5>
+                    @(Model.LastDropTime.HasValue
+                        ? Model.LastDropTime.Value.ToString("g")
+                        : "N/A")
+                </h5>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="text-muted">Current Location</label>
+                <h5>
+                    @(Model.CurrentLat.HasValue && Model.CurrentLng.HasValue
+                        ? $"{Model.CurrentLat}, {Model.CurrentLng}"
+                        : "Not Available")
+                </h5>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<br />
+
+<a asp-action="Index" class="btn btn-secondary">Back</a>
+<a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>

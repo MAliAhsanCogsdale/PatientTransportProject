@@ -1,0 +1,25 @@
+﻿@model dynamic
+
+@if (Model.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination">
+
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-page="@i"
+                       asp-route-pageSize="@Model.PageSize"
+                       asp-route-search="@Model.Search">
+                        @i
+                    </a>
+
+                </li>
+            }
+
+        </ul>
+    </nav>
+}

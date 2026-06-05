@@ -1,0 +1,20 @@
+﻿@model TransportProject.Models.Role
+
+<h2>Create Role</h2>
+
+<form asp-action="Create" method="post">
+
+    <div class="mb-3">
+        <label>Name</label>
+        <input asp-for="Name" class="form-control" />
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label>Active</label>
+    </div>
+
+    <button class="btn btn-success">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Back</a>
+
+</form>

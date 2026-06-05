@@ -1,0 +1,23 @@
+@{
+    ViewData["Title"] = "Import Route Appointments";
+}
+
+<h2>Import Route Appointments</h2>
+
+@if (TempData["ImportMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["ImportMessage"]</div>
+}
+
+<form asp-action="ImportFile" method="post" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label class="form-label">Upload file (PDF or plain text)</label>
+        <input type="file" name="file" class="form-control" />
+    </div>
+    <div class="mb-3">
+        @* <small class="text-muted">If uploading PDF make sure the application has the "UglyToad.PdfPig" package available. Shortest path: add the NuGet package and redeploy. Plain text (.txt) files are supported out of the box.</small>
+    *@
+        </div>
+    <button type="submit" class="btn btn-primary">Import</button>
+    <a asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
+</form>

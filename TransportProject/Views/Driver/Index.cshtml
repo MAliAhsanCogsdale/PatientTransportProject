@@ -1,0 +1,128 @@
+@using TransportProject.Helper_Classes
+@using TransportProject.Models
+@model PagedResult<Driver>
+
+@{
+    ViewData["Title"] = "Drivers";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Drivers</h2>
+    <a class="btn btn-primary" asp-action="Create">Add Driver</a>
+</div>
+
+<!-- SEARCH -->
+<form method="get" class="row mb-3">
+
+    <div class="col-md-4">
+        <input type="text"
+               name="search"
+               value="@Model.Search"
+               class="form-control"
+               placeholder="Search drivers..." />
+    </div>
+
+    <div class="col-md-2">
+        <select name="pageSize" class="form-control">
+            <option value="10">10</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <button class="btn btn-primary">Search</button>
+    </div>
+
+</form>
+
+<table class="table table-striped table-bordered">
+    <thead class="table-dark">
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Vehicle Id</th>
+            <th>Shift</th>
+            <th>Status</th>
+            <th>Available</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @if (Model.Items != null && Model.Items.Any())
+        {
+            foreach (var driver in Model.Items)
+            {
+                <tr>
+                    <td>@driver.Id</td>
+
+                    <td>@driver.FirstName @driver.LastName</td>
+                    <td>@driver.Phone</td>
+                    <td>@driver.VehicleId</td>
+
+                    <td>
+                        @driver.ShiftStartTime.ToString(@"hh\:mm")
+                        -
+                        @driver.ShiftEndTime.ToString(@"hh\:mm")
+                    </td>
+
+                    <td>
+                        <span class="badge bg-success">@driver.Status</span>
+                    </td>
+
+                    <td>
+                        @(driver.IsAvailable ? "Yes" : "No")
+                    </td>
+
+                    <td>
+                        <a class="btn btn-sm btn-info"
+                           asp-action="Details"
+                           asp-route-id="@driver.Id">
+                            View
+                        </a>
+
+                        <a class="btn btn-sm btn-secondary"
+                           asp-action="Edit"
+                           asp-route-id="@driver.Id">
+                            Edit
+                        </a>
+
+                        <a class="btn btn-sm btn-danger"
+                           asp-action="Delete"
+                           asp-route-id="@driver.Id">
+                            Delete
+                        </a>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="8" class="text-center">
+                    No drivers found
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- PAGINATION -->
+@if (Model.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                    <a class="page-link"
+                       href="?page=@i&pageSize=@Model.PageSize&search=@Model.Search">
+                        @i
+                    </a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

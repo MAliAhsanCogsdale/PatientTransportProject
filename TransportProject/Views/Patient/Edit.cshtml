@@ -1,0 +1,68 @@
+﻿@model TransportProject.Models.Patient
+
+@{
+    ViewData["Title"] = "Update Patient Record";
+}
+
+<h2>Edit Patient</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
+    <div class="row">
+
+        <div class="col-md-6 mb-3">
+            <label>First Name</label>
+            <input asp-for="FirstName" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label>Last Name</label>
+            <input asp-for="LastName" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label>Phone</label>
+            <input asp-for="PhoneNumber" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label>Hospital Id</label>
+            <input asp-for="HospitalId" class="form-control" />
+        </div>
+
+        <div class="col-md-12 mb-3">
+            <label>Address</label>
+            <textarea asp-for="Address" class="form-control"></textarea>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label>Visit Time</label>
+            <input asp-for="VisitTime" type="datetime-local" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label>Visit Type</label>
+            <input asp-for="VisitType" class="form-control" />
+        </div>
+
+        <div class="col-md-12 mb-3">
+            <label>Notes</label>
+            <textarea asp-for="Notes" class="form-control"></textarea>
+        </div>
+
+        <div class="col-md-4 form-check mb-3">
+            <input asp-for="IsWheelchairRequired" class="form-check-input" />
+            <label class="form-check-label">Wheelchair Required</label>
+        </div>
+
+        <div class="col-md-4 form-check mb-3">
+            <input asp-for="IsActive" class="form-check-input" />
+            <label class="form-check-label">Is Active</label>
+        </div>
+
+    </div>
+
+    <button class="btn btn-success">Update</button>
+    <a asp-action="Index" class="btn btn-secondary">Back</a>
+</form>

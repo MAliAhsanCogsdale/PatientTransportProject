@@ -1,0 +1,33 @@
+@model TransportProject.Models.RouteAppointment
+
+@{
+    ViewData["Title"] = "Edit Route Appointment";
+}
+
+<h2>Edit Route Appointment</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+n    <div class="mb-3">
+        <label class="form-label">Route Id</label>
+        <input asp-for="RouteId" class="form-control" type="number" min="1" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Appointment Id</label>
+        <input asp-for="AppointmentId" class="form-control" type="number" min="1" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Sequence Order</label>
+        <input asp-for="SequenceOrder" class="form-control" type="number" min="1" />
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label class="form-check-label">Is Active</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a class="btn btn-secondary ms-2" asp-action="Index">Cancel</a>
+</form>

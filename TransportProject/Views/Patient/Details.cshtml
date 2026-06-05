@@ -1,0 +1,31 @@
+﻿@model TransportProject.Models.Patient
+
+@{
+    ViewData["Title"] = "Patient Details";
+}
+
+<h2>Patient Details</h2>
+
+<div class="card">
+    <div class="card-body">
+
+        <p><strong>Name:</strong> @Model.FirstName @Model.LastName</p>
+        <p><strong>Phone:</strong> @Model.PhoneNumber</p>
+        <p><strong>Address:</strong> @Model.Address</p>
+        <p><strong>Hospital:</strong> @Model.HospitalId</p>
+
+        <p><strong>Visit Time:</strong> @Model.VisitTime.ToString("g")</p>
+        <p><strong>Visit Type:</strong> @Model.VisitType</p>
+
+        <p><strong>Wheelchair:</strong> @(Model.IsWheelchairRequired ? "Yes" : "No")</p>
+        <p><strong>Active:</strong> @(Model.IsActive ? "Yes" : "No")</p>
+
+        <p><strong>Notes:</strong> @Model.Notes</p>
+
+    </div>
+</div>
+
+<br />
+
+<a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+<a asp-action="Index" class="btn btn-secondary">Back</a>

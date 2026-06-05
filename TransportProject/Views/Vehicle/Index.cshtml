@@ -1,0 +1,49 @@
+﻿@model IEnumerable<TransportProject.Models.Vehicle>
+
+<h2>Vehicles</h2>
+
+<a class="btn btn-primary mb-2" asp-action="Create">Add Vehicle</a>
+
+<form method="get" class="mb-3">
+    <input type="text" name="search" class="form-control" placeholder="Search..." />
+</form>
+
+<table class="table table-bordered table-striped">
+
+    <thead class="table-dark">
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Model</th>
+            <th>Number</th>
+            <th>Capacity</th>
+            <th>Active</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var v in Model)
+        {
+            <tr>
+                <td>@v.Id</td>
+                <td>@v.VehicleName</td>
+                <td>@v.Model</td>
+                <td>@v.VehicleNumber</td>
+                <td>@v.Capacity</td>
+                <td>@(v.IsActive ? "Yes" : "No")</td>
+
+                <td>
+                    <a asp-action="Details" asp-route-id="@v.Id" class="btn btn-info btn-sm">View</a>
+                    <a asp-action="Edit" asp-route-id="@v.Id" class="btn btn-warning btn-sm">Edit</a>
+                    <a asp-action="Delete" asp-route-id="@v.Id"
+                       class="btn btn-danger btn-sm"
+                       onclick="return confirm('Delete this vehicle?')">
+                        Delete
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>

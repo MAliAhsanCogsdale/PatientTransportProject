@@ -1,0 +1,56 @@
+﻿@model TransportProject.Models.Hospital
+
+<h2>Edit Hospital</h2>
+
+<form asp-action="Edit" method="post">
+
+    <input type="hidden" asp-for="Id" />
+
+    <div class="row">
+
+        <div class="col-md-6 mb-2">
+            <label>Name</label>
+            <input asp-for="Name" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <label>Area</label>
+            <input asp-for="Area" class="form-control" />
+        </div>
+
+        <div class="col-md-12 mb-2">
+            <label>Address</label>
+            <textarea asp-for="Address" class="form-control"></textarea>
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <label>Phone</label>
+            <input asp-for="Phone" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <label>Hospital Type</label>
+            <input asp-for="HospitalType" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-2">
+            <label>Operating Hours</label>
+            <input asp-for="OperatingHours" class="form-control" />
+        </div>
+
+        <div class="col-md-6 form-check mt-4">
+            <input asp-for="EmergencyAvailable" class="form-check-input" />
+            <label>Emergency Available</label>
+        </div>
+
+        <div class="col-md-6 form-check mt-2">
+            <input asp-for="IsActive" class="form-check-input" />
+            <label>Is Active</label>
+        </div>
+
+    </div>
+
+    <button class="btn btn-success mt-3">Update</button>
+    <a asp-action="Index" class="btn btn-secondary mt-3">Back</a>
+
+</form>

@@ -1,0 +1,15 @@
+﻿@model TransportProject.Models.Appointment
+
+<h2>Appointment Details</h2>
+
+<div>
+    <p><strong>Patient:</strong> @Model.PatientId</p>
+    <p><strong>Hospital:</strong> @Model.HospitalId</p>
+    <p><strong>Appointment Time:</strong> @Model.AppointmentTime</p>
+    <p><strong>Pickup Time:</strong> @Model.PickupTime</p>
+    <p><strong>Status:</strong> @Model.Status</p>
+    <p><strong>Pickup Address:</strong> @Model.PickupAddress</p>
+    <p><strong>Notes:</strong> @Model.Notes</p>
+</div>
+
+<a asp-action="Index">Back</a>

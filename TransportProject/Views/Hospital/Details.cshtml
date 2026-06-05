@@ -1,0 +1,25 @@
+﻿@model TransportProject.Models.Hospital
+
+<h2>Hospital Details</h2>
+
+<div class="card">
+    <div class="card-body">
+
+        <p><strong>Name:</strong> @Model.Name</p>
+        <p><strong>Area:</strong> @Model.Area</p>
+        <p><strong>Address:</strong> @Model.Address</p>
+        <p><strong>Phone:</strong> @Model.Phone</p>
+        <p><strong>Type:</strong> @Model.HospitalType</p>
+        <p><strong>Operating Hours:</strong> @Model.OperatingHours</p>
+        <p><strong>Emergency:</strong> @(Model.EmergencyAvailable ? "Yes" : "No")</p>
+        <p><strong>Active:</strong> @(Model.IsActive ? "Yes" : "No")</p>
+
+        <p><strong>Description:</strong> @Model.Description</p>
+
+    </div>
+</div>
+
+<br />
+
+<a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+<a asp-action="Index" class="btn btn-secondary">Back</a>

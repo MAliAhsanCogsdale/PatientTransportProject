@@ -1,0 +1,40 @@
+﻿@model TransportProject.Models.Vehicle
+
+<h2>Create Vehicle</h2>
+
+<form asp-action="Create">
+
+    <div class="mb-3">
+        <label>Name</label>
+        <input asp-for="VehicleName" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Model</label>
+        <input asp-for="Model" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Vehicle Number</label>
+        <input asp-for="VehicleNumber" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Capacity</label>
+        <input asp-for="Capacity" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Description</label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label>Active</label>
+    </div>
+
+    <button class="btn btn-success">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Back</a>
+
+</form>

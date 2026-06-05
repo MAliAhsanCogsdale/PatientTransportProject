@@ -1,0 +1,37 @@
+﻿@using TransportProject.Helper_Classes
+@using TransportProject.Models
+@model PagedResult<Patient>
+
+<h2>Patients</h2>
+
+<partial name="_Search" model="Model" />
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Hospital</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td>@item.FirstName @item.LastName</td>
+                <td>@item.PhoneNumber</td>
+                <td>@item.Hospital?.Name</td>
+
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm">View</a>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Edit</a>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<partial name="_Pagination" model="Model" />
