@@ -7,7 +7,7 @@ using TransportProject.Models;
 using TransportProject.Repositories.Interface;
 using TransportProject.ViewModels;
 using UglyToad.PdfPig;
-using Route = TransportProject.Models.Route;
+//using Route = TransportProject.Models.Route;
 using Newtonsoft.Json;
 using System.Text;
 
@@ -16,20 +16,20 @@ namespace TransportProject.Controllers
     //[Authorize(Roles = "Admin,Dispatcher")]
     public class RouteAppointmentController : Controller
     {
-        private readonly IRouteAppointmentRepository _repository;
+        //private readonly IRouteAppointmentRepository _repository;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<RouteAppointmentController> _logger;
         private readonly string _googleApiKey;
         private readonly HttpClient _httpClient;
 
         public RouteAppointmentController(
-            IRouteAppointmentRepository repository,
+            //IRouteAppointmentRepository repository,
             ApplicationDbContext context,
             ILogger<RouteAppointmentController> logger,
             IConfiguration configuration,
             IHttpClientFactory httpClientFactory)
         {
-            _repository = repository;
+            //_repository = repository;
             _context = context;
             _logger = logger;
             _googleApiKey = configuration["GoogleMaps:ApiKey"] ?? throw new Exception("Google API Key missing");
@@ -43,33 +43,92 @@ namespace TransportProject.Controllers
         {
             try
             {
-                var query = _repository.Query();
+                var query = _context.Appointments
+                .Include(a => a.Patient)
+                .Include(a => a.Hospital)
+                .Include(a => a.Driver)
+                .Where(a => a.IsActive);
 
                 if (!string.IsNullOrEmpty(searchDriver))
-                    query = query.Where(x => x.DriverName.Contains(searchDriver));
+                {
+                    query = query.Where(a => a.Driver != null &&
+                        (a.Driver.FirstName + " " + a.Driver.LastName).Contains(searchDriver));
+                }
 
                 if (!string.IsNullOrEmpty(searchPatient))
-                    query = query.Where(x => x.PatientName.Contains(searchPatient));
+                {
+                    query = query.Where(a => a.Patient != null &&
+                        (a.Patient.FirstName + " " + a.Patient.LastName).Contains(searchPatient));
+                }
 
                 if (date.HasValue)
-                    query = query.Where(x => x.PickupTime.Date == date.Value.Date);
+                {
+                    query = query.Where(a => a.PickupTime.Date == date.Value.Date);
+                }
 
                 var totalRecords = await query.CountAsync();
 
-                if (!selectAll)
-                {
-                    query = query.OrderBy(x => x.PickupTime)
-                                 .Skip((page - 1) * pageSize)
-                                 .Take(pageSize);
-                }
+                var appointments = await query
+                    .OrderBy(a => a.PickupTime)
+                    .ThenBy(a => a.SequenceOrder)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
 
-                return View(new RouteAppointmentListVM
+                //var viewModel = new AppointmentListVM
+                //{
+                //    Items = appointments.Select(a => new AppointmentItemVM
+                //    {
+                //        Id = a.Id,
+                //        DriverName = a.Driver != null ? $"{a.Driver.FirstName} {a.Driver.LastName}" : "Unassigned",
+                //        PatientName = a.Patient != null ? $"{a.Patient.FirstName} {a.Patient.LastName}" : "",
+                //        PickupTime = a.PickupTime,
+                //        PickupAddress = a.PickupAddress,
+                //        DropOffTime = a.DropOffTime,
+                //        DropOffAddress = a.DropOffAddress ?? a.Hospital?.Name ?? "",
+                //        HospitalName = a.Hospital?.Name ?? "",
+                //        SequenceOrder = a.SequenceOrder ?? 0,
+                //        LOS = a.LOS,
+                //        CPay = a.CPay,
+                //        Miles = a.Miles,
+                //        Status = a.Status
+                //    }).ToList(),
+                //    CurrentPage = page,
+                //    PageSize = pageSize,
+                //    TotalRecords = totalRecords
+                //};
+
+                //return View(viewModel);
+                var viewModel = new RouteAppointmentListVM
                 {
-                    Items = await query.ToListAsync(),
+                    Items = appointments.Select(a => new RouteAppointmentVM
+                    {
+                        Id = a.Id,
+                        DriverName = a.Driver != null ? $"{a.Driver.FirstName} {a.Driver.LastName}" : "Unassigned",
+                        PatientName = a.Patient != null ? $"{a.Patient.FirstName} {a.Patient.LastName}" : "",
+                        PickupTime = a.PickupTime,
+                        PickupAddress = a.PickupAddress,
+                        HospitalName = a.Hospital?.Name ?? "",
+                        SequenceOrder = a.SequenceOrder,
+                        LOS = a.LOS ?? "",
+                        CPay = a.CPay ?? 0,
+                        PCA = a.PCA ?? 0,
+                        AESC = a.AESC ?? 0,
+                        CESC = a.CESC ?? 0,
+                        Seats = a.Seats ?? 0,
+                        Miles = a.Miles ?? 0,
+                        Notes = a.Notes ?? ""
+                    }).ToList(),
                     CurrentPage = page,
                     PageSize = pageSize,
-                    TotalRecords = totalRecords
-                });
+                    TotalRecords = totalRecords,
+                    SearchDriver = searchDriver,
+                    SearchPatient = searchPatient,
+                    Date = date,
+                    SelectAll = selectAll
+                };
+
+                return View(viewModel);
             }
             catch (Exception ex)
             {
@@ -103,40 +162,44 @@ namespace TransportProject.Controllers
                 var geoCache = new Dictionary<string, (double lat, double lng)>();
                 var distanceCache = new Dictionary<string, double>();
 
-                var appointments = new List<Appointment>();
-                var hospitalsDict = new Dictionary<string, Hospital>(StringComparer.OrdinalIgnoreCase);
-                var patientsDict = new Dictionary<string, Patient>();
+                // Group trips by driver and date
+                var tripsByDriverAndDate = new Dictionary<string, List<TripVm>>();
 
-                var tripsByDriver = new Dictionary<string, List<(Appointment, (double, double), (double, double))>>();
+                //var appointments = new List<Appointment>();
+                //var hospitalsDict = new Dictionary<string, Hospital>(StringComparer.OrdinalIgnoreCase);
+                //var patientsDict = new Dictionary<string, Patient>();
+
+                //var tripsByDriver = new Dictionary<string, List<(Appointment, (double, double), (double, double))>>();
 
                 // ================= STEP 1: CREATE DATA =================
                 foreach (var trip in trips)
                 {
                     try
                     {
-                        // ---------- Hospital ----------
-                        if (!hospitalsDict.TryGetValue(trip.HospitalName ?? "", out var hospital))
+                        // Get or create hospital
+                        var hospital = await _context.Hospitals
+                            .FirstOrDefaultAsync(h => h.Name == trip.HospitalName)
+                            ?? new Hospital
+                            {
+                                Name = Trim50(trip.HospitalName),
+                                Address = Trim200(trip.HospitalAddress),
+                                Phone = Trim30(trip.HospitalPhone),
+                                IsActive = true
+                            };
+
+                        if (hospital.Id == 0)
                         {
-                            hospital = await _context.Hospitals.FirstOrDefaultAsync(h =>
-                                       h.Name.ToLower() == trip.HospitalName.ToLower() && h.Address.ToLower() == trip.HospitalAddress.ToLower())
-                                ?? new Hospital
-                                {
-                                    Name = Trim50(trip.HospitalName),
-                                    Address = Trim200(trip.HospitalAddress),
-                                    Phone = Trim30(trip.HospitalPhone),
-                                    IsActive = true
-                                };
-
-                            if (hospital.Id == 0)
-                                _context.Hospitals.Add(hospital);
-
-                            hospitalsDict[trip.HospitalName ?? ""] = hospital;
+                            _context.Hospitals.Add(hospital);
+                            await _context.SaveChangesAsync();
                         }
 
-                        // ---------- Patient ----------
-                        string patientKey = $"{trip.FirstName}_{trip.LastName}_{trip.PatientPhone}";
+                        // Get or create patient
+                        var patient = await _context.Patients.FirstOrDefaultAsync(p =>
+                            p.FirstName == trip.FirstName &&
+                            p.LastName == trip.LastName &&
+                            p.PhoneNumber == trip.PatientPhone);
 
-                        if (!patientsDict.TryGetValue(patientKey, out var patient))
+                        if (patient == null)
                         {
                             patient = new Patient
                             {
@@ -150,155 +213,144 @@ namespace TransportProject.Controllers
                             };
 
                             _context.Patients.Add(patient);
-                            patientsDict[patientKey] = patient;
+                            await _context.SaveChangesAsync();
                         }
 
-                        // ---------- GEO ----------
-                        var pickup = await GetCoordinatesCached(trip.PickupAddress, geoCache);
-                        var drop = await GetCoordinatesCached(trip.HospitalName, geoCache);
+                        // Geocode addresses
+                        var pickupCoord = await GetCoordinatesCached(trip.PickupAddress, geoCache);
+                        var hospitalCoord = await GetCoordinatesCached(trip.HospitalAddress, geoCache);
 
-                        // ---------- Appointment ----------
-                        var appt = new Appointment
+                        // Find best driver
+                        var driver = await FindBestDriverSmart(drivers, trip, pickupCoord, hospitalCoord, distanceCache);
+
+                        if (driver != null)
                         {
-                            Patient = patient,
-                            Hospital = hospital,
+                            string key = $"{driver.Id}_{trip.PickupTime:yyyyMMdd}";
+                            if (!tripsByDriverAndDate.ContainsKey(key))
+                                tripsByDriverAndDate[key] = new List<TripVm>();
+
+                            tripsByDriverAndDate[key].Add(trip);
+                        }
+
+                        // Create appointment with all data
+                        var appointment = new Appointment
+                        {
+                            PatientId = patient.Id,
+                            HospitalId = hospital.Id,
+                            DriverId = driver?.Id,
                             PickupTime = trip.PickupTime.Value,
                             AppointmentTime = trip.DropTime,
-                            PickupAddress = trip.PickupAddress,
-                            PickupLatitude = pickup.lat,
-                            PickupLongitude = pickup.lng,
+                            DropOffTime = trip.DropTime,
+                            PickupAddress = Trim200(trip.PickupAddress),
+                            PickupLatitude = pickupCoord.lat,
+                            PickupLongitude = pickupCoord.lng,
+                            DropOffAddress = Trim200(trip.HospitalAddress),
+                            DropOffLatitude = hospitalCoord.lat,
+                            DropOffLongitude = hospitalCoord.lng,
                             Status = "Scheduled",
+                            LOS = trip.LOS,
+                            CPay = trip.CPay,
+                            PCA = trip.PCA,
+                            AESC = trip.AESC,
+                            CESC = trip.CESC,
+                            Seats = trip.Seats,
+                            Miles = trip.Miles,
+                            Notes = trip.Notes,
                             IsActive = true
                         };
 
-                        appointments.Add(appt);
-                        _context.Appointments.Add(appt);
-
-                        // ---------- Driver ----------
-                        var driver = await FindBestDriverSmart(
-                            drivers, trip, pickup, drop, distanceCache);
-
-                        if (driver == null) continue;
-
-                        string key = $"{driver.Id}_{trip.PickupTime:yyyyMMdd}";
-
-                        if (!tripsByDriver.ContainsKey(key))
-                            tripsByDriver[key] = new();
-
-                        tripsByDriver[key].Add((appt, pickup, drop));
+                        _context.Appointments.Add(appointment);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Trip skipped");
+                        _logger.LogWarning(ex, $"Trip skipped: {trip.FirstName} {trip.LastName}");
                     }
                 }
 
-                await _context.SaveChangesAsync(); // ✅ single batch save
-
-                // ================= STEP 2: CREATE ROUTES =================
-                foreach (var group in tripsByDriver)
+                // Optimize routes and update sequence orders
+                foreach (var group in tripsByDriverAndDate)
                 {
                     try
                     {
                         int driverId = int.Parse(group.Key.Split('_')[0]);
-                        var driver = drivers.First(x => x.Id == driverId);
+                        var driver = drivers.First(d => d.Id == driverId);
 
                         var stops = group.Value;
 
-                        // ✅ CALL GOOGLE OPTIMIZATION HERE
-                        var optimizedStops = await OptimizeRouteUsingGoogle(
-                            stops,
-                            (driver.CurrentLat ?? stops.First().Item2.Item1,
-                             driver.CurrentLng ?? stops.First().Item2.Item2)
-                        );
+                        // Get appointments for this driver and date
+                        var driverAppointments = await _context.Appointments
+                            .Where(a => a.DriverId == driverId && a.PickupTime.Date == group.Value.First().PickupTime.Value.Date)
+                            .ToListAsync();
 
-                        var routeDate = optimizedStops.First().appt.PickupTime.Date;
+                        // Optimize route
+                        var optimized = await OptimizeRouteUsingGoogle(driverAppointments, driver);
 
-                        var route = new Route
-                        {
-                            DriverId = driverId,
-                            RouteDate = routeDate,
-                            Status = "Active",
-                            IsActive = true
-                        };
-
-                        _context.Routes.Add(route);
-
+                        // Update sequence order
                         int seq = 1;
-
-                        foreach (var stop in optimizedStops)
+                        foreach (var appt in optimized)
                         {
-                            var miles = await GetDistanceCached(
-                                stop.pickup,
-                                stop.drop,
-                                distanceCache);
-
-                            _context.RouteAppointments.Add(new RouteAppointment
-                            {
-                                Route = route,
-                                AppointmentId = stop.appt.Id,
-                                SequenceOrder = seq++,
-                                Miles = (decimal)miles,
-                                IsActive = true
-                            });
+                            appt.SequenceOrder = seq++;
+                            driver.CurrentLat = appt.DropOffLatitude;
+                            driver.CurrentLng = appt.DropOffLongitude;
+                            driver.LastDropTime = appt.DropOffTime;
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Route creation failed");
+                        _logger.LogError(ex, "Route optimization failed");
                     }
                 }
 
-                // ✅ SINGLE SAVE ONLY
                 await _context.SaveChangesAsync();
-
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Import failed");
-                return StatusCode(500, "Import failed");
+                return StatusCode(500, $"Import failed: {ex.Message}");
             }
         }
 
         // ================= GOOGLE OPTIMIZATION =================
-        private async Task<List<(Appointment appt, (double lat, double lng) pickup, (double lat, double lng) drop)>>
-        OptimizeRouteUsingGoogle(
-            List<(Appointment appt, (double lat, double lng) pickup, (double lat, double lng) drop)> stops,
-            (double lat, double lng) start)
+        private async Task<List<Appointment>> OptimizeRouteUsingGoogle(
+    List<Appointment> appointments,
+    Driver driver)
         {
             try
             {
-                if (!stops.Any()) return stops;
+                if (!appointments.Any()) return appointments;
 
-                string origin = $"{start.lat},{start.lng}";
-                string destination = $"{stops.Last().drop.lat},{stops.Last().drop.lng}";
-                string waypoints = "optimize:true|" + string.Join("|", stops.Select(s => $"{s.pickup.lat},{s.pickup.lng}"));
+                string origin = $"{driver.CurrentLat ?? 0},{driver.CurrentLng ?? 0}";
+                string destination = $"{appointments.Last().PickupLatitude},{appointments.Last().PickupLongitude}";
+                string waypoints = "optimize:true|" + string.Join("|", appointments.Select(a => $"{a.PickupLatitude},{a.PickupLongitude}"));
 
                 var url = $"https://maps.googleapis.com/maps/api/directions/json?origin={origin}&destination={destination}&waypoints={waypoints}&key={_googleApiKey}";
-                var response = await _httpClient.GetStringAsync(url);
 
+                var response = await _httpClient.GetStringAsync(url);
                 dynamic data = JsonConvert.DeserializeObject(response);
 
                 if (data.status != "OK")
-                    return stops;
+                {
+                    _logger.LogWarning("Google optimization failed, returning original order");
+                    return appointments;
+                }
 
                 var order = data.routes[0].waypoint_order;
 
-                var optimized = new List<(Appointment appt, (double lat, double lng) pickup, (double lat, double lng) drop)>();
+                var optimized = new List<Appointment>();
 
                 foreach (var i in order)
                 {
-                    var s = stops[(int)i];
-                    optimized.Add((s.appt, s.pickup, s.drop));
+                    var appt = appointments[(int)i];
+                    optimized.Add(appt);
                 }
 
-                return optimized;
+                return optimized.Any() ? optimized : appointments;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Google optimization failed");
-                return stops;
+                _logger.LogError(ex, "Google optimization failed, returning original order");
+                return appointments;
             }
         }
 
@@ -387,6 +439,7 @@ namespace TransportProject.Controllers
             return best;
         }
 
+        // ================= DISTANCE CALCULATION =================
         private async Task<double> GetDistanceCached(
        (double lat, double lng) o,
        (double lat, double lng) d,
@@ -493,6 +546,7 @@ namespace TransportProject.Controllers
             }
         }
 
+        
         // ================= UTIL =================
         private string Trim50(string? v) => string.IsNullOrEmpty(v) ? "" : v.Length > 50 ? v[..50] : v;
         private string Trim30(string? v) => string.IsNullOrEmpty(v) ? "" : v.Length > 30 ? v[..30] : v;
@@ -550,6 +604,32 @@ namespace TransportProject.Controllers
                     //var age = Regex.Match(block, @"Age:\s*(\d+)");
                     //if (age.Success)
                     //    t.PatientAge = int.Parse(age.Groups[1].Value);
+
+                    // Parse phone
+                    var phone = Regex.Match(block, @"\(\d{3}\)\s*\d{3}-\d{4}");
+                    if (phone.Success) t.PatientPhone = phone.Value;
+
+                    // Parse times
+                    var times = Regex.Matches(block, @"\d{2}:\d{2}");
+                    if (times.Count >= 2)
+                    {
+                        t.PickupTime = DateTime.Parse(times[0].Value);
+                        t.DropTime = DateTime.Parse(times[1].Value);
+                    }
+
+                    // Parse addresses
+                    t.PickupAddress = ExtractPickupAddress(block);
+                    var dropAddress = ExtractDropOffAddress(block);
+
+                    var addressParts = dropAddress.Split(new[] { "  " }, StringSplitOptions.RemoveEmptyEntries);
+                    if (addressParts.Length > 0)
+                    {
+                        t.HospitalName = addressParts[0].Trim();
+                        if (addressParts.Length > 1)
+                        {
+                            t.HospitalAddress = string.Join(" ", addressParts.Skip(1)).Trim();
+                        }
+                    }
 
                     // -----------------------------
                     // Patient Phone
@@ -610,74 +690,99 @@ namespace TransportProject.Controllers
                     // -----------------------------
                     // LOS
                     // -----------------------------
-                    var los = Regex.Match(block, @"LOS:\s*([^C]+)");
-                    if (los.Success)
-                        t.LOS = los.Groups[1].Value.Trim();
+                    //var los = Regex.Match(block, @"LOS:\s*([^C]+)");
+                    //if (los.Success)
+                    //    t.LOS = los.Groups[1].Value.Trim();
+                    var losMatch = Regex.Match(block, @"LOS:\s*([A-Z\s]+)", RegexOptions.IgnoreCase);
+                    if (losMatch.Success)
+                        t.LOS = losMatch.Groups[1].Value.Trim();
 
                     // -----------------------------
                     // CPay
                     // -----------------------------
-                    var cpay = Regex.Match(block, @"CPay:\s*\$([\d\.]+)");
-                    if (cpay.Success)
-                        t.CPay = decimal.Parse(cpay.Groups[1].Value);
+                    //var cpay = Regex.Match(block, @"CPay:\s*\$([\d\.]+)");
+                    //if (cpay.Success)
+                    //    t.CPay = decimal.Parse(cpay.Groups[1].Value);
+                    var cpayMatch = Regex.Match(block, @"CPay:\s*\$?([\d.]+)");
+                    if (cpayMatch.Success && decimal.TryParse(cpayMatch.Groups[1].Value, out var cpay))
+                        t.CPay = cpay;
 
                     // -----------------------------
                     // PCA
                     // -----------------------------
-                    var pca = Regex.Match(block, @"PCA:\s*(\d)");
-                    if (pca.Success)
-                        t.PCA = pca.Groups[1].Value == "1";
+                    //var pca = Regex.Match(block, @"PCA:\s*(\d)");
+                    //if (pca.Success)
+                    //    t.PCA = pca.Groups[1].Value == "1";
+                    var pcaMatch = Regex.Match(block, @"PCA:\s*(\d+)");
+                    if (pcaMatch.Success && int.TryParse(pcaMatch.Groups[1].Value, out var pca))
+                        t.PCA = pca;
 
                     // -----------------------------
                     // AESC
                     // -----------------------------
-                    var aesc = Regex.Match(block, @"AEsc:\s*(\d)");
-                    if (aesc.Success)
-                        t.AESC = aesc.Groups[1].Value == "1";
+                    //var aesc = Regex.Match(block, @"AEsc:\s*(\d)");
+                    //if (aesc.Success)
+                    //    t.AESC = aesc.Groups[1].Value == "1";
+                    var aescMatch = Regex.Match(block, @"AEsc:\s*(\d+)");
+                    if (aescMatch.Success && int.TryParse(aescMatch.Groups[1].Value, out var aesc))
+                        t.AESC = aesc;
 
                     // -----------------------------
                     // CESC
                     // -----------------------------
-                    var cesc = Regex.Match(block, @"CEsc:\s*(\d)");
-                    if (cesc.Success)
-                        t.CESC = cesc.Groups[1].Value == "1";
+                    //var cesc = Regex.Match(block, @"CEsc:\s*(\d)");
+                    //if (cesc.Success)
+                    //    t.CESC = cesc.Groups[1].Value == "1";
+                    var cescMatch = Regex.Match(block, @"CEsc:\s*(\d+)");
+                    if (cescMatch.Success && int.TryParse(cescMatch.Groups[1].Value, out var cesc))
+                        t.CESC = cesc;
 
                     // -----------------------------
                     // Seats
                     // -----------------------------
-                    var seats = Regex.Match(block, @"Seats:\s*(\d+)");
-                    if (seats.Success)
-                        t.Seats = int.Parse(seats.Groups[1].Value);
+                    //var seats = Regex.Match(block, @"Seats:\s*(\d+)");
+                    //if (seats.Success)
+                    //    t.Seats = int.Parse(seats.Groups[1].Value);
+                    var seatsMatch = Regex.Match(block, @"Seats:\s*(\d+)");
+                    if (seatsMatch.Success && int.TryParse(seatsMatch.Groups[1].Value, out var seats))
+                        t.Seats = seats;
 
                     // -----------------------------
                     // Miles
                     // -----------------------------
-                    var miles = Regex.Match(block, @"Miles:\s*([\d\.]+)");
-                    if (miles.Success)
-                        t.Miles = decimal.Parse(miles.Groups[1].Value);
+                    //var miles = Regex.Match(block, @"Miles:\s*([\d\.]+)");
+                    //if (miles.Success)
+                    //    t.Miles = decimal.Parse(miles.Groups[1].Value);
+                    var milesMatch = Regex.Match(block, @"Miles:\s*([\d.]+)");
+                    if (milesMatch.Success && decimal.TryParse(milesMatch.Groups[1].Value, out var miles))
+                        t.Miles = miles;
 
                     // -----------------------------
                     // Notes
                     // -----------------------------
-                    var notes = Regex.Match(block, @"Notes:\s*(.+)");
-                    if (notes.Success)
-                        t.Notes = notes.Groups[1].Value.Trim();
+                    //var notes = Regex.Match(block, @"Notes:\s*(.+)");
+                    //if (notes.Success)
+                    //    t.Notes = notes.Groups[1].Value.Trim();
+                    var notesMatch = Regex.Match(block, @"Notes:\s*(.+)", RegexOptions.Singleline);
+                    if (notesMatch.Success)
+                        t.Notes = notesMatch.Groups[1].Value.Trim();
+
 
                     t.PickupAddress = ExtractPickupAddress(block);
 
                     // Extract hospital/drop-off address (after DO, without phone)
-                    var dropAddress = ExtractDropOffAddress(block);
+                    //var dropAddress = ExtractDropOffAddress(block);
 
                     // The first part before the full address is usually the hospital name
-                    var addressParts = dropAddress.Split(new[] { "  " }, StringSplitOptions.RemoveEmptyEntries);
-                    if (addressParts.Length > 0)
-                    {
-                        t.HospitalName = addressParts[0].Trim();
-                        if (addressParts.Length > 1)
-                        {
-                            t.HospitalAddress = string.Join(" ", addressParts.Skip(1)).Trim();
-                        }
-                    }
+                    // addressParts = dropAddress.Split(new[] { "  " }, StringSplitOptions.RemoveEmptyEntries);
+                    //if (addressParts.Length > 0)
+                    //{
+                    //    t.HospitalName = addressParts[0].Trim();
+                    //    if (addressParts.Length > 1)
+                    //    {
+                    //        t.HospitalAddress = string.Join(" ", addressParts.Skip(1)).Trim();
+                    //    }
+                    //}
 
                     trips.Add(t);
                 }
@@ -751,6 +856,21 @@ namespace TransportProject.Controllers
                 _logger.LogError(ex, "Failed to extract drop-off address");
                 return string.Empty;
             }
+        }
+
+        private string CleanAddressForGeocoding(string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return string.Empty;
+
+            var cleaned = address;
+            cleaned = Regex.Replace(cleaned, @"\d{1,2}:\d{2}\s*(?:AM|PM)?", string.Empty, RegexOptions.IgnoreCase);
+            cleaned = Regex.Replace(cleaned, @"\(\d{3}\)\s*\d{3}-\d{4}", string.Empty);
+            cleaned = Regex.Replace(cleaned, @"\d{3}-\d{3}-\d{4}", string.Empty);
+            cleaned = Regex.Replace(cleaned, @"Phy:\s*", string.Empty, RegexOptions.IgnoreCase);
+            cleaned = cleaned.Replace("  ", " ").Trim();
+
+            return cleaned;
         }
 
         /// <summary>

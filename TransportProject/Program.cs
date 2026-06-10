@@ -23,8 +23,8 @@ builder.Services.AddScoped<IPatientRepository, PatientRepository>();
 builder.Services.AddScoped<IDriverRepository, DriverRepository>();
 builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-builder.Services.AddScoped<IRouteRepository, RouteRepository>();
-builder.Services.AddScoped<IRouteAppointmentRepository, RouteAppointmentRepository>();
+//builder.Services.AddScoped<IRouteRepository, RouteRepository>();
+//builder.Services.AddScoped<IRouteAppointmentRepository, RouteAppointmentRepository>();
 builder.Services.AddScoped<IHospitalRepository, HospitalRepository>();
 
 builder.Services.AddHttpClient();

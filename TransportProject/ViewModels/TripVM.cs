@@ -5,25 +5,25 @@
         public string FirstName { get; set; } = "";
         public string LastName { get; set; } = "";
         public string PatientPhone { get; set; } = "";
+        public DateTime? PickupTime { get; set; }
+        public DateTime DropTime { get; set; }
         public int PatientAge { get; set; } = 0;
         public string PickupAddress { get; set; } = "";
         public string HospitalAddress { get; set; } = "";
         public string HospitalName { get; set; } = "";
         public string HospitalPhone { get; set; } = "";
-        public DateTime? PickupTime { get; set; }
-        public DateTime DropTime { get; set; }
-        public string RideId { get; set; } = "";
-        public string? Notes { get; set; } = "";
+        // public string RideId { get; set; } = "";
+        //public string? Notes { get; set; } = "";
 
-        public string LOS { get; set; } = "";
-        public decimal CPay { get; set; }
-
-        public bool PCA { get; set; }
-        public bool AESC { get; set; }
-        public bool CESC { get; set; }
-
-        public int Seats { get; set; }
-        public decimal Miles { get; set; }
+        // New fields from PDF
+        public string? LOS { get; set; }
+        public decimal? CPay { get; set; }
+        public int? PCA { get; set; }
+        public int? AESC { get; set; }
+        public int? CESC { get; set; }
+        public int? Seats { get; set; }
+        public decimal? Miles { get; set; }
+        public string? Notes { get; set; }
     }
 
     public class RawAppointmentDto
@@ -39,3 +39,6 @@
         public double? PickupLongitude { get; set; }
     }
 }
+
+
+

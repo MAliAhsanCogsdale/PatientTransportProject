@@ -1,4 +1,4 @@
-@model TransportProject.Models.RouteAppointment
+@model TransportProject.Models.Appointment
 
 @{
     ViewData["Title"] = "Edit Route Appointment";
@@ -8,14 +8,15 @@
 
 <form asp-action="Edit" method="post">
     <input type="hidden" asp-for="Id" />
-n    <div class="mb-3">
+
+n    <div class="mb-3">
         <label class="form-label">Route Id</label>
-        <input asp-for="RouteId" class="form-control" type="number" min="1" />
+        <input asp-for="Id" class="form-control" type="number" min="1" />
     </div>
 
     <div class="mb-3">
         <label class="form-label">Appointment Id</label>
-        <input asp-for="AppointmentId" class="form-control" type="number" min="1" />
+        <input asp-for="PatientId" class="form-control" type="number" min="1" />
     </div>
 
     <div class="mb-3">

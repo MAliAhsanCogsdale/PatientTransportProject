@@ -12,12 +12,10 @@ namespace TransportProject.Repositories.Implementation
         public IQueryable<RouteAppointmentVM> Query()
         {
             // use explicit joins so EF can translate cleanly and avoid navigation nullability surprises
-            var q = from ra in _context.RouteAppointments
-                    join r in _context.Routes on ra.RouteId equals r.Id into rj
-                    from r in rj.DefaultIfEmpty()
-                    join d in _context.Drivers on r.DriverId equals d.Id into dj
+            var q = from ra in _context.Appointments
+                    join d in _context.Drivers on ra.DriverId equals d.Id into dj
                     from d in dj.DefaultIfEmpty()
-                    join a in _context.Appointments on ra.AppointmentId equals a.Id into aj
+                    join a in _context.Appointments on ra.Id equals a.Id into aj
                     from a in aj.DefaultIfEmpty()
                     join p in _context.Patients on a.PatientId equals p.Id into pj
                     from p in pj.DefaultIfEmpty()
@@ -54,12 +52,10 @@ namespace TransportProject.Repositories.Implementation
             try
             {
                 return await (
-                    from ra in _context.RouteAppointments
-                    join r in _context.Routes on ra.RouteId equals r.Id
-                    join d in _context.Drivers on r.DriverId equals d.Id
-                    join a in _context.Appointments on ra.AppointmentId equals a.Id
-                    join p in _context.Patients on a.PatientId equals p.Id
-                    join h in _context.Hospitals on a.HospitalId equals h.Id
+                    from ra in _context.Appointments
+                    join d in _context.Drivers on ra.DriverId equals d.Id
+                    join p in _context.Patients on ra.PatientId equals p.Id
+                    join h in _context.Hospitals on ra.HospitalId equals h.Id
                     where ra.IsActive && ra.Deleted == null
                     orderby ra.SequenceOrder
                     select new RouteAppointmentVM
@@ -67,8 +63,8 @@ namespace TransportProject.Repositories.Implementation
                         Id = ra.Id,
                         DriverName = d.FirstName + " " + d.LastName,
                         PatientName = p.FirstName + " " + p.LastName,
-                        PickupTime = a.PickupTime,
-                        PickupAddress = a.PickupAddress,
+                        PickupTime = ra.PickupTime,
+                        PickupAddress = ra.PickupAddress,
                         HospitalName = h.Name,
                         SequenceOrder = ra.SequenceOrder
                     }
@@ -79,11 +75,11 @@ namespace TransportProject.Repositories.Implementation
                 throw new Exception("Error fetching route appointments", ex);
             }
         }
-        public async Task<RouteAppointment?> GetByIdAsync(int id)
+        public async Task<Appointment?> GetByIdAsync(int id)
         {
             try
             {
-                return await _context.Set<RouteAppointment>()
+                return await _context.Set<Appointment>()
                     .FirstOrDefaultAsync(x => x.Id == id && x.IsActive && x.Deleted == null);
             }
             catch (Exception ex)
@@ -96,21 +92,19 @@ namespace TransportProject.Repositories.Implementation
             try
             {
                 return await (
-                    from ra in _context.RouteAppointments
-                    join r in _context.Routes on ra.RouteId equals r.Id
-                    join d in _context.Drivers on r.DriverId equals d.Id
-                    join a in _context.Appointments on ra.AppointmentId equals a.Id
-                    join p in _context.Patients on a.PatientId equals p.Id
-                    join h in _context.Hospitals on a.HospitalId equals h.Id
-                    where ra.RouteId == routeId && ra.IsActive && ra.Deleted == null
+                    from ra in _context.Appointments
+                    join d in _context.Drivers on ra.DriverId equals d.Id
+                    join p in _context.Patients on ra.PatientId equals p.Id
+                    join h in _context.Hospitals on ra.HospitalId equals h.Id
+                    where ra.Id == routeId && ra.IsActive && ra.Deleted == null
                     orderby ra.SequenceOrder
                     select new RouteAppointmentVM
                     {
                         Id = ra.Id,
                         DriverName = d.FirstName + " " + d.LastName,
                         PatientName = p.FirstName + " " + p.LastName,
-                        PickupTime = a.PickupTime,
-                        PickupAddress = a.PickupAddress,
+                        PickupTime = ra.PickupTime,
+                        PickupAddress = ra.PickupAddress,
                         HospitalName = h.Name,
                         SequenceOrder = ra.SequenceOrder
                     }
@@ -136,11 +130,11 @@ namespace TransportProject.Repositories.Implementation
         //        throw new Exception("Error creating route appointment", ex);
         //    }
         //}
-        public async Task UpdateAsync(RouteAppointment routeAppointment)
+        public async Task UpdateAsync(Appointment routeAppointment)
         {
             try
             {
-                _context.Set<RouteAppointment>().Update(routeAppointment);
+                _context.Set<Appointment>().Update(routeAppointment);
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -152,7 +146,7 @@ namespace TransportProject.Repositories.Implementation
         {
             try
             {
-                var ra = await _context.Set<RouteAppointment>().FindAsync(id);
+                var ra = await _context.Set<Appointment>().FindAsync(id);
                 if (ra != null)
                 {
                     ra.IsActive = false;
