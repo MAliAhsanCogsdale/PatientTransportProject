@@ -1,0 +1,8 @@
+HIPAA Technical Safeguard ? Where it applies in your app
+---------------------------------------------------------
+Access Control (§164.312(a))     ? [Authorize] on PHI controllers/actions, RBAC
+Audit Controls (§164.312(b))     ? Log every PHI access/export (who, what, when)
+Integrity (§164.312(c))          ? Validate/sanitize input; prevent tampering
+Person/Entity Auth (§164.312(d)) ? Enforced login (you have cookie auth)
+Transmission Security (§164.312(e)) ? HTTPS/TLS, no PHI to non-BAA channels
+Encryption (Addressable)         ? TLS in transit + TDE/encryption at rest

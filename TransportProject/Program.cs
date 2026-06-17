@@ -27,15 +27,41 @@ builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 //builder.Services.AddScoped<IRouteAppointmentRepository, RouteAppointmentRepository>();
 builder.Services.AddScoped<IHospitalRepository, HospitalRepository>();
 
+builder.Services.AddSingleton<
+    Microsoft.AspNetCore.Identity.IPasswordHasher<TransportProject.Models.User>,
+    Microsoft.AspNetCore.Identity.PasswordHasher<TransportProject.Models.User>>();
+
 builder.Services.AddHttpClient();
+
+//builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+//.AddCookie(options =>
+//{
+//    options.LoginPath = "/Auth/Login";
+//    options.AccessDeniedPath = "/Auth/Login";
+//    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+//});
+
+
+
+
+// Required for AuditService to read the current user/IP
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<TransportProject.Repositories.Interface.IAuditService,
+    TransportProject.Repositories.Implementation.AuditService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 .AddCookie(options =>
 {
     options.LoginPath = "/Auth/Login";
     options.AccessDeniedPath = "/Auth/Login";
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(15); // auto-logoff (§164.312(a)(2)(iii))
+    options.SlidingExpiration = true;
+    options.Cookie.HttpOnly = true;                    // mitigate XSS token theft
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // TLS only
+    options.Cookie.SameSite = SameSiteMode.Strict;     // mitigate CSRF
 });
+
+
 
 builder.Services.AddAuthorization();
 

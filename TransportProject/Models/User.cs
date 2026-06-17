@@ -11,5 +11,10 @@ namespace TransportProject.Models
         public Role Role { get; set; } = null!;
         public bool IsActive { get; set; } = true;
         public DateTime? Deleted { get; set; }
+
+        // HIPAA: brute-force protection (§164.308(a)(5)(ii)(D))
+        public int FailedLoginCount { get; set; }
+        public DateTime? LockoutEndUtc { get; set; }
+        public DateTime? LastLoginUtc { get; set; }
     }
 }

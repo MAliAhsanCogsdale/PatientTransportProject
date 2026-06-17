@@ -22,6 +22,8 @@
         public string PatientName { get; set; } = string.Empty;
         public DateTime PickupTime { get; set; }
         public string PickupAddress { get; set; } = string.Empty;
+        public DateTime DropOffTime { get; set; }
+        public string DropOffAddress { get; set; } = string.Empty;
         public string HospitalName { get; set; } = string.Empty;
         public int? SequenceOrder { get; set; }
         public string? LOS { get; set; }

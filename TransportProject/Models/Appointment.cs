@@ -21,7 +21,7 @@
         public double PickupLongitude { get; set; }
 
         // Drop-off Information (NEW)
-        public DateTime? DropOffTime { get; set; }
+        public DateTime DropOffTime { get; set; }
         public string? DropOffAddress { get; set; }
         public double? DropOffLatitude { get; set; }
         public double? DropOffLongitude { get; set; }

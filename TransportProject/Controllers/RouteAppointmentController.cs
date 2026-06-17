@@ -10,12 +10,19 @@ using UglyToad.PdfPig;
 //using Route = TransportProject.Models.Route;
 using Newtonsoft.Json;
 using System.Text;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
+using System.Drawing;
 
 namespace TransportProject.Controllers
 {
-    //[Authorize(Roles = "Admin,Dispatcher")]
+    [Authorize(Roles = "Admin,Dispatcher")]
     public class RouteAppointmentController : Controller
     {
+        // 2) Inject the audit service via the constructor (add this field + ctor param)
+        private readonly IAuditService _audit;
+        // ... assign in constructor: _audit = audit;
+
         //private readonly IRouteAppointmentRepository _repository;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<RouteAppointmentController> _logger;
@@ -108,6 +115,8 @@ namespace TransportProject.Controllers
                         PatientName = a.Patient != null ? $"{a.Patient.FirstName} {a.Patient.LastName}" : "",
                         PickupTime = a.PickupTime,
                         PickupAddress = a.PickupAddress,
+                        DropOffTime = a.DropOffTime,
+                        DropOffAddress = a.DropOffAddress,
                         HospitalName = a.Hospital?.Name ?? "",
                         SequenceOrder = a.SequenceOrder,
                         LOS = a.LOS ?? "",
@@ -140,6 +149,7 @@ namespace TransportProject.Controllers
         // ================= IMPORT =================
         public IActionResult ImportFile() => View();
 
+
         [HttpPost]
         public async Task<IActionResult> ImportFile(IFormFile file)
         {
@@ -159,24 +169,21 @@ namespace TransportProject.Controllers
                     .Where(d => d.IsActive && d.IsAvailable)
                     .ToListAsync();
 
+                if (!drivers.Any())
+                    return BadRequest("No active drivers found");
+
                 var geoCache = new Dictionary<string, (double lat, double lng)>();
                 var distanceCache = new Dictionary<string, double>();
 
-                // Group trips by driver and date
-                var tripsByDriverAndDate = new Dictionary<string, List<TripVm>>();
+                var appointments = new List<Appointment>();
 
-                //var appointments = new List<Appointment>();
-                //var hospitalsDict = new Dictionary<string, Hospital>(StringComparer.OrdinalIgnoreCase);
-                //var patientsDict = new Dictionary<string, Patient>();
-
-                //var tripsByDriver = new Dictionary<string, List<(Appointment, (double, double), (double, double))>>();
-
-                // ================= STEP 1: CREATE DATA =================
+                // =========================================================
+                // STEP 1: CREATE ENTITIES (NO DRIVER ASSIGNMENT YET)
+                // =========================================================
                 foreach (var trip in trips)
                 {
                     try
                     {
-                        // Get or create hospital
                         var hospital = await _context.Hospitals
                             .FirstOrDefaultAsync(h => h.Name == trip.HospitalName)
                             ?? new Hospital
@@ -193,7 +200,6 @@ namespace TransportProject.Controllers
                             await _context.SaveChangesAsync();
                         }
 
-                        // Get or create patient
                         var patient = await _context.Patients.FirstOrDefaultAsync(p =>
                             p.FirstName == trip.FirstName &&
                             p.LastName == trip.LastName &&
@@ -216,37 +222,25 @@ namespace TransportProject.Controllers
                             await _context.SaveChangesAsync();
                         }
 
-                        // Geocode addresses
                         var pickupCoord = await GetCoordinatesCached(trip.PickupAddress, geoCache);
-                        var hospitalCoord = await GetCoordinatesCached(trip.HospitalAddress, geoCache);
+                        var dropCoord = await GetCoordinatesCached(trip.HospitalAddress, geoCache);
 
-                        // Find best driver
-                        var driver = await FindBestDriverSmart(drivers, trip, pickupCoord, hospitalCoord, distanceCache);
-
-                        if (driver != null)
-                        {
-                            string key = $"{driver.Id}_{trip.PickupTime:yyyyMMdd}";
-                            if (!tripsByDriverAndDate.ContainsKey(key))
-                                tripsByDriverAndDate[key] = new List<TripVm>();
-
-                            tripsByDriverAndDate[key].Add(trip);
-                        }
-
-                        // Create appointment with all data
-                        var appointment = new Appointment
+                        appointments.Add(new Appointment
                         {
                             PatientId = patient.Id,
                             HospitalId = hospital.Id,
-                            DriverId = driver?.Id,
                             PickupTime = trip.PickupTime.Value,
                             AppointmentTime = trip.DropTime,
                             DropOffTime = trip.DropTime,
+
                             PickupAddress = Trim200(trip.PickupAddress),
+                            DropOffAddress = Trim200(trip.HospitalAddress),
+
                             PickupLatitude = pickupCoord.lat,
                             PickupLongitude = pickupCoord.lng,
-                            DropOffAddress = Trim200(trip.HospitalAddress),
-                            DropOffLatitude = hospitalCoord.lat,
-                            DropOffLongitude = hospitalCoord.lng,
+                            DropOffLatitude = dropCoord.lat,
+                            DropOffLongitude = dropCoord.lng,
+
                             Status = "Scheduled",
                             LOS = trip.LOS,
                             CPay = trip.CPay,
@@ -257,59 +251,253 @@ namespace TransportProject.Controllers
                             Miles = trip.Miles,
                             Notes = trip.Notes,
                             IsActive = true
-                        };
-
-                        _context.Appointments.Add(appointment);
+                        });
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, $"Trip skipped: {trip.FirstName} {trip.LastName}");
+                        _logger.LogWarning(ex, "Trip skipped");
                     }
                 }
 
-                // Optimize routes and update sequence orders
-                foreach (var group in tripsByDriverAndDate)
+                // Save all appointments first (WITHOUT drivers)
+                _context.Appointments.AddRange(appointments);
+                await _context.SaveChangesAsync();
+
+                // Reload from DB (important for tracking IDs)
+                var dbAppointments = await _context.Appointments
+                    .Where(a => a.IsActive && a.DriverId == null)
+                    .OrderBy(a => a.PickupTime)
+                    .ToListAsync();
+
+                // =========================================================
+                // STEP 2: FAIR DRIVER DISTRIBUTION (ROUND ROBIN)
+                // =========================================================
+                var driverAssignments = new Dictionary<int, List<Appointment>>();
+
+                int driverIndex = 0;
+
+                foreach (var appt in dbAppointments)
                 {
-                    try
+                    var driver = drivers[driverIndex % drivers.Count];
+                    driverIndex++;
+
+                    appt.DriverId = driver.Id;
+
+                    if (!driverAssignments.ContainsKey(driver.Id))
+                        driverAssignments[driver.Id] = new List<Appointment>();
+
+                    driverAssignments[driver.Id].Add(appt);
+                }
+
+                await _context.SaveChangesAsync();
+
+                // =========================================================
+                // STEP 3: OPTIMIZE ROUTES PER DRIVER
+                // =========================================================
+                foreach (var kv in driverAssignments)
+                {
+                    var driverId = kv.Key;
+                    var driverAppointments = kv.Value;
+
+                    var driver = drivers.First(d => d.Id == driverId);
+
+                    var optimized = await OptimizeRouteUsingGoogle(driverAppointments, driver);
+
+                    int seq = 1;
+                    foreach (var appt in optimized)
                     {
-                        int driverId = int.Parse(group.Key.Split('_')[0]);
-                        var driver = drivers.First(d => d.Id == driverId);
+                        appt.SequenceOrder = seq++;
 
-                        var stops = group.Value;
-
-                        // Get appointments for this driver and date
-                        var driverAppointments = await _context.Appointments
-                            .Where(a => a.DriverId == driverId && a.PickupTime.Date == group.Value.First().PickupTime.Value.Date)
-                            .ToListAsync();
-
-                        // Optimize route
-                        var optimized = await OptimizeRouteUsingGoogle(driverAppointments, driver);
-
-                        // Update sequence order
-                        int seq = 1;
-                        foreach (var appt in optimized)
-                        {
-                            appt.SequenceOrder = seq++;
-                            driver.CurrentLat = appt.DropOffLatitude;
-                            driver.CurrentLng = appt.DropOffLongitude;
-                            driver.LastDropTime = appt.DropOffTime;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Route optimization failed");
+                        driver.CurrentLat = appt.DropOffLatitude;
+                        driver.CurrentLng = appt.DropOffLongitude;
+                        driver.LastDropTime = appt.DropOffTime;
                     }
                 }
 
                 await _context.SaveChangesAsync();
+
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Import failed");
-                return StatusCode(500, $"Import failed: {ex.Message}");
+                return StatusCode(500, ex.Message);
             }
         }
+
+
+
+        //[HttpPost]
+        //public async Task<IActionResult> ImportFile(IFormFile file)
+        //{
+        //    try
+        //    {
+        //        if (file == null || file.Length == 0)
+        //            return BadRequest("No file uploaded");
+
+        //        var text = ExtractPdfText(file);
+
+        //        var trips = ParseTripsV2(text)
+        //            .Where(t => t.PickupTime != null)
+        //            .OrderBy(t => t.PickupTime)
+        //            .ToList();
+
+        //        var drivers = await _context.Drivers
+        //            .Where(d => d.IsActive && d.IsAvailable)
+        //            .ToListAsync();
+
+        //        var geoCache = new Dictionary<string, (double lat, double lng)>();
+        //        var distanceCache = new Dictionary<string, double>();
+
+        //        // Group trips by driver and date
+        //        var tripsByDriverAndDate = new Dictionary<string, List<TripVm>>();
+
+        //        //var appointments = new List<Appointment>();
+        //        //var hospitalsDict = new Dictionary<string, Hospital>(StringComparer.OrdinalIgnoreCase);
+        //        //var patientsDict = new Dictionary<string, Patient>();
+
+        //        //var tripsByDriver = new Dictionary<string, List<(Appointment, (double, double), (double, double))>>();
+
+        //        // ================= STEP 1: CREATE DATA =================
+        //        foreach (var trip in trips)
+        //        {
+        //            try
+        //            {
+        //                // Get or create hospital
+        //                var hospital = await _context.Hospitals
+        //                    .FirstOrDefaultAsync(h => h.Name == trip.HospitalName)
+        //                    ?? new Hospital
+        //                    {
+        //                        Name = Trim50(trip.HospitalName),
+        //                        Address = Trim200(trip.HospitalAddress),
+        //                        Phone = Trim30(trip.HospitalPhone),
+        //                        IsActive = true
+        //                    };
+
+        //                if (hospital.Id == 0)
+        //                {
+        //                    _context.Hospitals.Add(hospital);
+        //                    await _context.SaveChangesAsync();
+        //                }
+
+        //                // Get or create patient
+        //                var patient = await _context.Patients.FirstOrDefaultAsync(p =>
+        //                    p.FirstName == trip.FirstName &&
+        //                    p.LastName == trip.LastName &&
+        //                    p.PhoneNumber == trip.PatientPhone);
+
+        //                if (patient == null)
+        //                {
+        //                    patient = new Patient
+        //                    {
+        //                        FirstName = Trim50(trip.FirstName),
+        //                        LastName = Trim50(trip.LastName),
+        //                        PhoneNumber = Trim30(trip.PatientPhone),
+        //                        Address = Trim200(trip.PickupAddress),
+        //                        Hospital = hospital,
+        //                        VisitTime = trip.DropTime,
+        //                        IsActive = true
+        //                    };
+
+        //                    _context.Patients.Add(patient);
+        //                    await _context.SaveChangesAsync();
+        //                }
+
+        //                // Geocode addresses
+        //                var pickupCoord = await GetCoordinatesCached(trip.PickupAddress, geoCache);
+        //                var hospitalCoord = await GetCoordinatesCached(trip.HospitalAddress, geoCache);
+
+        //                // Find best driver
+        //                var driver = await FindBestDriverSmart(drivers, trip, pickupCoord, hospitalCoord, distanceCache);
+
+        //                if (driver != null)
+        //                {
+        //                    string key = $"{driver.Id}_{trip.PickupTime:yyyyMMdd}";
+        //                    if (!tripsByDriverAndDate.ContainsKey(key))
+        //                        tripsByDriverAndDate[key] = new List<TripVm>();
+
+        //                    tripsByDriverAndDate[key].Add(trip);
+        //                }
+
+        //                // Create appointment with all data
+        //                var appointment = new Appointment
+        //                {
+        //                    PatientId = patient.Id,
+        //                    HospitalId = hospital.Id,
+        //                    DriverId = driver?.Id,
+        //                    PickupTime = trip.PickupTime.Value,
+        //                    AppointmentTime = trip.DropTime,
+        //                    DropOffTime = trip.DropTime,
+        //                    PickupAddress = Trim200(trip.PickupAddress),
+        //                    PickupLatitude = pickupCoord.lat,
+        //                    PickupLongitude = pickupCoord.lng,
+        //                    DropOffAddress = Trim200(trip.HospitalAddress),
+        //                    DropOffLatitude = hospitalCoord.lat,
+        //                    DropOffLongitude = hospitalCoord.lng,
+        //                    Status = "Scheduled",
+        //                    LOS = trip.LOS,
+        //                    CPay = trip.CPay,
+        //                    PCA = trip.PCA,
+        //                    AESC = trip.AESC,
+        //                    CESC = trip.CESC,
+        //                    Seats = trip.Seats,
+        //                    Miles = trip.Miles,
+        //                    Notes = trip.Notes,
+        //                    IsActive = true
+        //                };
+
+        //                _context.Appointments.Add(appointment);
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                _logger.LogWarning(ex, $"Trip skipped: {trip.FirstName} {trip.LastName}");
+        //            }
+        //        }
+
+        //        // Optimize routes and update sequence orders
+        //        foreach (var group in tripsByDriverAndDate)
+        //        {
+        //            try
+        //            {
+        //                int driverId = int.Parse(group.Key.Split('_')[0]);
+        //                var driver = drivers.First(d => d.Id == driverId);
+
+        //                var stops = group.Value;
+
+        //                // Get appointments for this driver and date
+        //                var driverAppointments = await _context.Appointments
+        //                    .Where(a => a.DriverId == driverId && a.PickupTime.Date == group.Value.First().PickupTime.Value.Date)
+        //                    .ToListAsync();
+
+        //                // Optimize route
+        //                var optimized = await OptimizeRouteUsingGoogle(driverAppointments, driver);
+
+        //                // Update sequence order
+        //                int seq = 1;
+        //                foreach (var appt in optimized)
+        //                {
+        //                    appt.SequenceOrder = seq++;
+        //                    driver.CurrentLat = appt.DropOffLatitude;
+        //                    driver.CurrentLng = appt.DropOffLongitude;
+        //                    driver.LastDropTime = appt.DropOffTime;
+        //                }
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                _logger.LogError(ex, "Route optimization failed");
+        //            }
+        //        }
+
+        //        await _context.SaveChangesAsync();
+        //        return RedirectToAction(nameof(Index));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Import failed");
+        //        return StatusCode(500, $"Import failed: {ex.Message}");
+        //    }
+        //}
+
 
         // ================= GOOGLE OPTIMIZATION =================
         private async Task<List<Appointment>> OptimizeRouteUsingGoogle(
@@ -629,6 +817,8 @@ namespace TransportProject.Controllers
                         {
                             t.HospitalAddress = string.Join(" ", addressParts.Skip(1)).Trim();
                         }
+                        else
+                            t.HospitalAddress = addressParts[0].Trim();
                     }
 
                     // -----------------------------
@@ -932,6 +1122,167 @@ namespace TransportProject.Controllers
             {
                 _logger.LogError(ex, "Failed to extract pickup address");
                 return string.Empty;
+            }
+        }
+
+        public async Task<IActionResult> ExportToExcel(
+    string searchDriver = "",
+    string searchPatient = "",
+    DateTime? date = null,
+    bool selectAll = false)
+        {
+            try
+            {
+                var query = _context.Appointments
+                    .Include(a => a.Patient)
+                    .Include(a => a.Hospital)
+                    .Include(a => a.Driver)
+                    .Where(a => a.IsActive);
+
+                // SAME FILTERS AS INDEX
+                if (!string.IsNullOrEmpty(searchDriver))
+                {
+                    query = query.Where(a =>
+                        a.Driver != null &&
+                        (a.Driver.FirstName + " " + a.Driver.LastName).Contains(searchDriver));
+                }
+
+                if (!string.IsNullOrEmpty(searchPatient))
+                {
+                    query = query.Where(a =>
+                        a.Patient != null &&
+                        (a.Patient.FirstName + " " + a.Patient.LastName).Contains(searchPatient));
+                }
+
+                if (date.HasValue)
+                {
+                    query = query.Where(a => a.PickupTime.Date == date.Value.Date);
+                }
+
+                var data = await query
+                    .OrderBy(a => a.DriverId)
+                    .ThenBy(a => a.SequenceOrder)
+                    .ThenBy(a => a.PickupTime)
+                    .ToListAsync();
+
+                ExcelPackage.License.SetNonCommercialOrganization("TransportProject");
+
+                using var package = new ExcelPackage();
+
+                // =====================================================
+                // SHEET 1: SUMMARY
+                // =====================================================
+                var summary = package.Workbook.Worksheets.Add("Summary");
+
+                summary.Cells[1, 1].Value = "Driver";
+                summary.Cells[1, 2].Value = "Total Trips";
+                summary.Cells[1, 3].Value = "Total Miles";
+
+                using (var r = summary.Cells[1, 1, 1, 3])
+                {
+                    r.Style.Font.Bold = true;
+                    r.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    r.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                }
+
+                var grouped = data
+                    .GroupBy(x => x.DriverId)
+                    .ToList();
+
+                int sRow = 2;
+
+                foreach (var g in grouped)
+                {
+                    var driver = g.First().Driver;
+
+                    summary.Cells[sRow, 1].Value = driver != null
+                        ? $"{driver.FirstName} {driver.LastName}"
+                        : "Unassigned";
+
+                    summary.Cells[sRow, 2].Value = g.Count();
+                    summary.Cells[sRow, 3].Value = g.Sum(x => x.Miles ?? 0);
+
+                    sRow++;
+                }
+
+                summary.Cells.AutoFitColumns();
+
+                // =====================================================
+                // DRIVER SHEETS
+                // =====================================================
+                foreach (var group in grouped)
+                {
+                    var driver = group.First().Driver;
+                    string sheetName = driver != null
+                        ? $"{driver.FirstName}"
+                        : "Unassigned";
+
+                    var sheet = package.Workbook.Worksheets.Add(sheetName);
+
+                    // HEADER
+                    string[] headers =
+                    {
+                "Sequence", "Patient", "Pickup Time", "Pickup Address",
+                "Hospital", "DropOff Time", "DropOff Address", "Miles", "Notes"
+            };
+
+                    for (int i = 0; i < headers.Length; i++)
+                        sheet.Cells[1, i + 1].Value = headers[i];
+
+                    using (var r = sheet.Cells[1, 1, 1, headers.Length])
+                    {
+                        r.Style.Font.Bold = true;
+                        r.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        r.Style.Fill.BackgroundColor.SetColor(Color.DarkBlue);
+                        r.Style.Font.Color.SetColor(Color.White);
+                    }
+
+                    int row = 2;
+
+                    foreach (var a in group.OrderBy(x => x.SequenceOrder))
+                    {
+                        sheet.Cells[row, 1].Value = a.SequenceOrder;
+                        sheet.Cells[row, 2].Value = a.Patient != null
+                            ? $"{a.Patient.FirstName} {a.Patient.LastName}"
+                            : "";
+
+                        sheet.Cells[row, 3].Value = a.PickupTime.ToString("g");
+                        sheet.Cells[row, 4].Value = a.PickupAddress;
+                        sheet.Cells[row, 5].Value = a.Hospital?.Name;
+                        sheet.Cells[row, 6].Value = a.DropOffTime.ToString("g");
+                        sheet.Cells[row, 7].Value = a.DropOffAddress;
+
+
+                        sheet.Cells[row, 8].Value = a.Miles;
+                        sheet.Cells[row, 9].Value = a.Notes;
+
+                        row++;
+                    }
+
+                    // TOTALS
+                    sheet.Cells[row + 1, 6].Value = "TOTAL:";
+                    sheet.Cells[row + 1, 7].Value = group.Sum(x => x.Miles ?? 0);
+                    sheet.Cells[row + 1, 6].Style.Font.Bold = true;
+                    sheet.Cells[row + 1, 7].Style.Font.Bold = true;
+
+                    sheet.Cells.AutoFitColumns();
+                    sheet.View.FreezePanes(2, 1);
+                }
+
+                // =====================================================
+                // EXPORT FILE
+                // =====================================================
+                var fileName = $"Route_Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                var bytes = package.GetAsByteArray();
+
+                return File(bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Professional export failed");
+                return StatusCode(500, "Export failed");
             }
         }
 
